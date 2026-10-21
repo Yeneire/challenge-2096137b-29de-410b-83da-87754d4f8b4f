@@ -1,0 +1,12 @@
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "tipoDocumento": "CC",
+  "numeroDocumento": "1234567890",
+  "nombreTitular": "Juan Pérez",
+  "tipoCuenta": "AHORROS",
+  "moneda": "COP",
+  "saldo": 10000,
+  "estado": "ACTIVA",
+  "fechaCreacion": "2023-10-01T12:00:00Z",
+  "sucursal": "001"
+}

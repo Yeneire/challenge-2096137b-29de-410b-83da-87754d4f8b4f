@@ -1,0 +1,169 @@
+origen,destino,tipo,obligatoriedad,regla_transformacion,ejemplo
+"tipoCuenta","accountType","string","S","Mapeo directo según catálogo: AHORROS->SAVINGS, CORRIENTE->CHECKING, CDT->CD","AHORROS"
+"moneda","currency","string","S","Mapeo directo según ISO 4217","COP"
+"titular.tipoIdentificacion","holder.identificationType","string","S","Mapeo directo: CC->NATIONAL_ID, CE->FOREIGN_ID, NIT->TAX_ID, PASAPORTE->PASSPORT","CC"
+"titular.numeroIdentificacion","holder.identificationNumber","string","S","Validar formato según tipo de identificación","123456789"
+"titular.nombre","holder.name","string","S","Normalizar nombre (mayúsculas, sin caracteres especiales)","Juan Pérez"
+"titular.direccion","holder.address","object","N","Transformar a objeto estructurado con campos: calle, ciudad, pais, codigoPostal","{}"
+"titular.email","holder.email","string","N","Validar formato de email","juan.perez@example.com"
+"titular.telefono","holder.phone","string","N","Normalizar formato internacional","+573123456789"
+"saldoInicial","initialBalance","number","S","Convertir a BigDecimal con 2 decimales","10000.50"
+"limiteSobregiro","overdraftLimit","number","N","Solo aplica para cuentas CORRIENTE. Convertir a BigDecimal con 2 decimales","500000"
+"tasaInteres","interestRate","number","N","Convertir a porcentaje (ej: 5.2 -> 0.052)","3.5"
+"fechaApertura","openingDate","string","S","Convertir a formato ISO 8601 (YYYY-MM-DDThh:mm:ssZ)","2023-11-15T00:00:00Z"
+"estado","status","string","S","Mapeo directo: ACTIVA->ACTIVE, INACTIVA->INACTIVE, BLOQUEADA->BLOCKED","ACTIVA"
+"sucursal","branchCode","string","S","Validar existencia en catálogo de sucursales","001"
+"segmentoCliente","customerSegment","string","S","Mapeo según catálogo interno: PERSONAL->STANDARD, PYME->BUSINESS, CORPORATIVO->CORPORATE","PERSONAL"
+"producto","productCode","string","S","Validar existencia en catálogo de productos","AHORROS_PERSONAL"
+"fechaUltimaTransaccion","lastTransactionDate","string","N","Convertir a formato ISO 8601 si existe","2023-11-10T14:30:00Z"
+"saldoDisponible","availableBalance","number","S","Calcular como saldoInicial + limiteSobregiro (si aplica)","10000.50"
+"saldoContable","ledgerBalance","number","S","Igual a saldoInicial","10000.50"
+"fechaCierre","closingDate","string","N","Convertir a formato ISO 8601 si existe",""
+"motivoCierre","closingReason","string","N","Mapeo según catálogo interno",""
+"idCliente","customerId","string","S","Generar UUID v4 basado en número de identificación","a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
+"idCuenta","accountId","string","S","Generar UUID v4","a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
+"numeroCuenta","accountNumber","string","S","Generar número de cuenta según algoritmo interno (ej: 53 + código sucursal + secuencia)","530012345678"
+"fechaUltimaActualizacion","lastUpdatedDate","string","S","Convertir a formato ISO 8601","2023-11-15T10:30:00Z"
+"usuarioActualizacion","updatedBy","string","S","Registrar usuario que realiza la operación","admin.system"
+"version","version","integer","S","Iniciar en 1 y incrementar con cada actualización","1"
+"metadatos","metadata","object","N","Almacenar propiedades adicionales como JSON","{}"
+"idTransaccion","transactionId","string","S","Generar UUID v4 para cada operación","a1b2c3d4-5678-90ef-ghij-klmnopqrstuv"
+"tipoOperacion","operationType","string","S","Mapeo directo: CREACION->CREATE, CONSULTA->READ, ACTUALIZACION->UPDATE, ELIMINACION->DELETE","CREACION"
+"fechaOperacion","operationDate","string","S","Convertir a formato ISO 8601","2023-11-15T10:30:00Z"
+"ipCliente","clientIp","string","N","Registrar IP del cliente si está disponible","192.168.1.1"
+"userAgent","userAgent","string","N","Registrar user agent del cliente si está disponible","Mozilla/5.0"
+"codigoRespuesta","responseCode","string","S","Mapeo según códigos HTTP: 200->SUCCESS, 400->BAD_REQUEST, 401->UNAUTHORIZED, 404->NOT_FOUND, 500->INTERNAL_ERROR","200"
+"mensajeRespuesta","responseMessage","string","S","Mensaje descriptivo de la respuesta","Cuenta creada exitosamente"
+"error.detalles","error.details","object","N","Estructura según RFC 7807 para errores","{}"
+"error.tipo","error.type","string","N","URI que identifica el tipo de error","about:blank"
+"error.titulo","error.title","string","N","Título descriptivo del error","Datos inválidos"
+"error.estado","error.status","integer","N","Código HTTP del error","400"
+"error.instancia","error.instance","string","N","URI de la instancia que produjo el error",""
+"error.codigo","error.code","string","N","Código interno del error","INVALID_DATA"
+"error.detalle","error.detail","string","N","Detalle específico del error","El campo 'numeroIdentificacion' no cumple con el formato requerido"
+
+## Reglas de Transformación Adicionales
+
+1. **Campos Obligatorios**: Todos los campos marcados con "S" deben estar presentes en la solicitud
+2. **Validación de Tipos**: Los campos deben convertirse al tipo especificado (ej: string a número)
+3. **Formato de Fechas**: Todas las fechas deben seguir el formato ISO 8601
+4. **Generación de IDs**: Los UUID deben generarse en formato v4
+5. **Normalización**: Los nombres y direcciones deben normalizarse (trim, mayúsculas)
+6. **Manejo de Nulos**: Los campos opcionales no enviados deben establecerse como null
+7. **Enmascaramiento**: Los campos sensibles (ej: números de identificación) deben enmascararse en respuestas
+
+## Ejemplo de Transformación Completa
+
+**Entrada (Origen):**
+```json
+{
+  "tipoCuenta": "AHORROS",
+  "moneda": "COP",
+  "titular": {
+    "tipoIdentificacion": "CC",
+    "numeroIdentificacion": "123456789",
+    "nombre": "Juan Pérez"
+  },
+  "saldoInicial": 10000.50,
+  "sucursal": "001",
+  "segmentoCliente": "PERSONAL",
+  "producto": "AHORROS_PERSONAL"
+}
+```
+
+**Salida (Destino):**
+```json
+{
+  "accountType": "SAVINGS",
+  "currency": "COP",
+  "holder": {
+    "identificationType": "NATIONAL_ID",
+    "identificationNumber": "*********", // Enmascarado
+    "name": "JUAN PÉREZ"
+  },
+  "initialBalance": 10000.50,
+  "branchCode": "001",
+  "customerSegment": "STANDARD",
+  "productCode": "AHORROS_PERSONAL",
+  "accountNumber": "530012345678", // Generado
+  "accountId": "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv", // Generado
+  "customerId": "a1b2c3d4-5678-90ef-ghij-klmnopqrstuv", // Generado
+  "status": "ACTIVE",
+  "openingDate": "2023-11-15T00:00:00Z",
+  "lastUpdatedDate": "2023-11-15T10:30:00Z",
+  "updatedBy": "admin.system",
+  "version": 1,
+  "availableBalance": 10000.50,
+  "ledgerBalance": 10000.50
+}
+```
+
+## Validaciones Específicas
+
+| Campo                  | Validación                                                                 |
+|------------------------|---------------------------------------------------------------------------|
+| tipoCuenta             | Debe existir en catálogo de tipos de cuenta                              |
+| moneda                 | Debe ser código ISO 4217 válido                                          |
+| tipoIdentificacion     | Debe existir en catálogo de tipos de identificación                      |
+| numeroIdentificacion   | Formato válido según tipo (ej: CC debe ser numérico entre 5-15 dígitos) |
+| nombre                 | Solo caracteres alfabéticos, espacios y apóstrofes                       |
+| saldoInicial           | Debe ser >= 0 y <= límite según tipo de cuenta                           |
+| sucursal               | Debe existir en catálogo de sucursales                                   |
+| segmentoCliente        | Debe existir en catálogo de segmentos                                    |
+| producto               | Debe existir en catálogo de productos                                    |
+
+## Mapeo de Códigos de Error
+
+| Código Origen          | Código Destino         | Descripción                                      |
+|-----------------------|------------------------|--------------------------------------------------|
+| INVALID_TYPE          | INVALID_DATA_TYPE      | Tipo de dato incorrecto                          |
+| MISSING_FIELD         | MISSING_REQUIRED_FIELD | Campo obligatorio faltante                       |
+| INVALID_FORMAT        | INVALID_FORMAT         | Formato inválido                                 |
+| OUT_OF_RANGE          | VALUE_OUT_OF_RANGE     | Valor fuera de rango permitido                   |
+| NOT_FOUND             | RESOURCE_NOT_FOUND     | Recurso no encontrado                            |
+| DUPLICATE             | DUPLICATE_RESOURCE     | Recurso duplicado                                |
+| UNAUTHORIZED          | UNAUTHORIZED           | No autorizado                                    |
+| FORBIDDEN             | FORBIDDEN              | Prohibido                                        |
+| INTERNAL_ERROR        | INTERNAL_SERVER_ERROR  | Error interno del servidor                       |
+
+## Consideraciones Técnicas
+
+1. **Idempotencia**: Todas las operaciones de escritura deben soportar idempotencia mediante el header `Idempotency-Key`
+2. **Consistencia**: Las operaciones deben garantizar consistencia eventual en sistemas distribuidos
+3. **Seguridad**: Todos los datos sensibles deben ser enmascarados en las respuestas
+4. **Auditoría**: Todas las operaciones deben registrarse con timestamp, usuario y detalles
+5. **Rendimiento**: El mapeo debe realizarse en < 10ms para cumplir con el SLA de 200ms
+6. **Extensibilidad**: El mapeo debe permitir agregar nuevos campos sin modificar la lógica principal
+7. **Trazabilidad**: Cada transformación debe generar un identificador único para seguimiento
+
+## Herramientas Recomendadas para Implementación
+
+1. **Lenguajes**: Java (con MapStruct), Python (con Pandas), JavaScript (con Lodash)
+2. **Frameworks**: Spring Boot (Java), FastAPI (Python), Express (Node.js)
+3. **Validación**: Hibernate Validator (Java), Pydantic (Python), Joi (JavaScript)
+4. **Testing**: JUnit (Java), Pytest (Python), Jest (JavaScript)
+5. **Documentación**: Swagger/OpenAPI, Redoc
+6. **Monitoreo**: Prometheus, Grafana, ELK Stack
+
+## Ejemplo de Implementación en Java (MapStruct)
+
+```java
+@Mapper(componentModel = "spring")
+public interface AccountMapper {
+    @Mapping(target = "accountType", source = "tipoCuenta")
+    @Mapping(target = "currency", source = "moneda")
+    @Mapping(target = "holder.identificationType", source = "titular.tipoIdentificacion")
+    @Mapping(target = "holder.identificationNumber", source = "titular.numeroIdentificacion")
+    @Mapping(target = "holder.name", source = "titular.nombre", qualifiedByName = "normalizeName")
+    @Mapping(target = "initialBalance", source = "saldoInicial")
+    @Mapping(target = "accountNumber", expression = "java(generateAccountNumber(account.getSucursal()))")
+    @Mapping(target = "accountId", expression = "java(java.util.UUID.randomUUID().toString())")
+    @Mapping(target = "customerId", expression = "java(generateCustomerId(account.getTitular().getNumeroIdentificacion()))")
+    AccountDto toDto(AccountRequest request);
+
+    @Named("normalizeName")
+    default String normalizeName(String name) {
+        return name != null ? name.trim().toUpperCase() : null;
+    }
+}
+```

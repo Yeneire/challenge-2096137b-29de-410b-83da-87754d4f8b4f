@@ -1,0 +1,9 @@
+{
+  "tipoDocumento": "CC",
+  "numeroDocumento": "1234567890",
+  "nombreTitular": "Juan Pérez",
+  "tipoCuenta": "AHORROS",
+  "moneda": "COP",
+  "saldoInicial": 10000,
+  "sucursal": "001"
+}

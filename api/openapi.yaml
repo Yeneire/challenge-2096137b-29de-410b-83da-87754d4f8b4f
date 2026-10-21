@@ -1,0 +1,558 @@
+openapi: 3.1.0
+info:
+  title: API de Gestión de Cuentas Bancarias
+  description: |
+    Esta API permite la gestión de cuentas bancarias en un sistema SOA, siguiendo estándares de bajo acoplamiento y buenas prácticas REST.
+    Incluye operaciones CRUD para cuentas bancarias, manejo de idempotencia y errores del dominio.
+  version: 1.0.0
+  contact:
+    name: Soporte Técnico
+    email: soporte@bancoejemplo.com
+servers:
+  - url: https://api.bancoejemplo.com/v1
+    description: Servidor de producción
+  - url: https://sandbox.api.bancoejemplo.com/v1
+    description: Servidor de pruebas
+paths:
+  /cuentas-bancarias:
+    post:
+      tags:
+        - Cuentas Bancarias
+      summary: Crear una nueva cuenta bancaria
+      description: |
+        Crea una nueva cuenta bancaria con los datos proporcionados.
+        Requiere autenticación y autorización con scope `cuentas:crear`.
+        La operación es idempotente mediante el header `Idempotency-Key`.
+      operationId: crearCuentaBancaria
+      security:
+        - OAuth2:
+            - cuentas:crear
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        description: Datos de la cuenta bancaria a crear
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CuentaBancariaRequest'
+            examples:
+              solicitudEjemplo:
+                $ref: './examples/request-create-account.json'
+      responses:
+        '201':
+          description: Cuenta bancaria creada exitosamente
+          headers:
+            Location:
+              description: URI de la cuenta bancaria creada
+              schema:
+                type: string
+                format: uri
+            Idempotency-Key:
+              description: Clave de idempotencia usada en la solicitud
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CuentaBancariaResponse'
+              examples:
+                respuestaEjemplo:
+                  $ref: './examples/response-create-account.json'
+        '400':
+          description: Solicitud inválida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                solicitudInvalida:
+                  value:
+                    type: https://api.bancoejemplo.com/errors/invalid-request
+                    title: Solicitud inválida
+                    status: 400
+                    detail: Los datos proporcionados no cumplen con el esquema requerido.
+                    instance: /cuentas-bancarias
+                    invalidParams:
+                      - name: numeroDocumento
+                        reason: debe ser un número válido de 10 dígitos
+        '401':
+          description: No autorizado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                noAutorizado:
+                  value:
+                    type: https://api.bancoejemplo.com/errors/unauthorized
+                    title: No autorizado
+                    status: 401
+                    detail: Falta autenticación o token inválido
+                    instance: /cuentas-bancarias
+        '403':
+          description: Prohibido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                prohibido:
+                  value:
+                    type: https://api.bancoejemplo.com/errors/forbidden
+                    title: Prohibido
+                    status: 403
+                    detail: El token no tiene el scope requerido
+                    instance: /cuentas-bancarias
+        '409':
+          description: Conflicto
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                cuentaDuplicada:
+                  value:
+                    type: https://api.bancoejemplo.com/errors/conflict
+                    title: Conflicto
+                    status: 409
+                    detail: Ya existe una cuenta con el mismo número de documento
+                    instance: /cuentas-bancarias
+    get:
+      tags:
+        - Cuentas Bancarias
+      summary: Listar cuentas bancarias
+      description: |
+        Retorna una lista paginada de cuentas bancarias filtradas por criterios opcionales.
+        Requiere autenticación y autorización con scope `cuentas:leer`.
+      operationId: listarCuentasBancarias
+      security:
+        - OAuth2:
+            - cuentas:leer
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: numeroDocumento
+          in: query
+          description: Número de documento del titular para filtrar
+          required: false
+          schema:
+            type: string
+            pattern: '^[0-9]{10}$'
+        - name: estado
+          in: query
+          description: Estado de la cuenta (ACTIVA, INACTIVA, BLOQUEADA)
+          required: false
+          schema:
+            type: string
+            enum: [ACTIVA, INACTIVA, BLOQUEADA]
+      responses:
+        '200':
+          description: Lista de cuentas bancarias
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CuentaBancariaResponse'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Solicitud inválida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: No autorizado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Prohibido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /cuentas-bancarias/{id}:
+    get:
+      tags:
+        - Cuentas Bancarias
+      summary: Obtener una cuenta bancaria por ID
+      description: |
+        Retorna los detalles de una cuenta bancaria específica por su ID.
+        Requiere autenticación y autorización con scope `cuentas:leer`.
+      operationId: obtenerCuentaBancaria
+      security:
+        - OAuth2:
+            - cuentas:leer
+      parameters:
+        - $ref: '#/components/parameters/CuentaId'
+      responses:
+        '200':
+          description: Detalles de la cuenta bancaria
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CuentaBancariaResponse'
+        '401':
+          description: No autorizado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Prohibido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Cuenta no encontrada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                cuentaNoEncontrada:
+                  value:
+                    type: https://api.bancoejemplo.com/errors/not-found
+                    title: Cuenta no encontrada
+                    status: 404
+                    detail: No existe una cuenta con el ID proporcionado
+                    instance: /cuentas-bancarias/123e4567-e89b-12d3-a456-426614174000
+    put:
+      tags:
+        - Cuentas Bancarias
+      summary: Actualizar una cuenta bancaria
+      description: |
+        Actualiza los datos de una cuenta bancaria existente.
+        Requiere autenticación y autorización con scope `cuentas:actualizar`.
+        La operación es idempotente mediante el header `Idempotency-Key`.
+      operationId: actualizarCuentaBancaria
+      security:
+        - OAuth2:
+            - cuentas:actualizar
+      parameters:
+        - $ref: '#/components/parameters/CuentaId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        description: Datos actualizados de la cuenta bancaria
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CuentaBancariaRequest'
+      responses:
+        '200':
+          description: Cuenta bancaria actualizada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CuentaBancariaResponse'
+        '400':
+          description: Solicitud inválida
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: No autorizado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Prohibido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Cuenta no encontrada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflicto
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      tags:
+        - Cuentas Bancarias
+      summary: Eliminar una cuenta bancaria
+      description: |
+        Elimina una cuenta bancaria existente.
+        Requiere autenticación y autorización con scope `cuentas:eliminar`.
+        La operación es idempotente.
+      operationId: eliminarCuentaBancaria
+      security:
+        - OAuth2:
+            - cuentas:eliminar
+      parameters:
+        - $ref: '#/components/parameters/CuentaId'
+      responses:
+        '204':
+          description: Cuenta bancaria eliminada exitosamente
+        '401':
+          description: No autorizado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Prohibido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Cuenta no encontrada
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  schemas:
+    CuentaBancariaRequest:
+      type: object
+      description: Datos para crear o actualizar una cuenta bancaria
+      required:
+        - tipoDocumento
+        - numeroDocumento
+        - nombreTitular
+        - tipoCuenta
+        - moneda
+      properties:
+        tipoDocumento:
+          type: string
+          description: Tipo de documento de identidad del titular
+          enum: [CC, CE, PAS, NIT]
+          example: CC
+        numeroDocumento:
+          type: string
+          description: Número de documento de identidad del titular
+          pattern: '^[0-9]{6,15}$'
+          example: "1234567890"
+        nombreTitular:
+          type: string
+          description: Nombre completo del titular de la cuenta
+          minLength: 3
+          maxLength: 100
+          example: Juan Pérez
+        tipoCuenta:
+          type: string
+          description: Tipo de cuenta bancaria
+          enum: [AHORROS, CORRIENTE, CDT]
+          example: AHORROS
+        moneda:
+          type: string
+          description: Moneda de la cuenta
+          enum: [COP, USD, EUR]
+          example: COP
+        saldoInicial:
+          type: number
+          description: Saldo inicial de la cuenta (opcional para creación)
+          minimum: 0
+          example: 10000
+        sucursal:
+          type: string
+          description: Código de la sucursal donde se abrió la cuenta
+          minLength: 3
+          maxLength: 10
+          example: "001"
+    CuentaBancariaResponse:
+      type: object
+      description: Datos de una cuenta bancaria existente
+      required:
+        - id
+        - tipoDocumento
+        - numeroDocumento
+        - nombreTitular
+        - tipoCuenta
+        - moneda
+        - saldo
+        - estado
+        - fechaCreacion
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único de la cuenta bancaria
+          example: 123e4567-e89b-12d3-a456-426614174000
+        tipoDocumento:
+          type: string
+          description: Tipo de documento de identidad del titular
+          enum: [CC, CE, PAS, NIT]
+          example: CC
+        numeroDocumento:
+          type: string
+          description: Número de documento de identidad del titular
+          pattern: '^[0-9]{6,15}$'
+          example: "1234567890"
+        nombreTitular:
+          type: string
+          description: Nombre completo del titular de la cuenta
+          minLength: 3
+          maxLength: 100
+          example: Juan Pérez
+        tipoCuenta:
+          type: string
+          description: Tipo de cuenta bancaria
+          enum: [AHORROS, CORRIENTE, CDT]
+          example: AHORROS
+        moneda:
+          type: string
+          description: Moneda de la cuenta
+          enum: [COP, USD, EUR]
+          example: COP
+        saldo:
+          type: number
+          description: Saldo actual de la cuenta
+          minimum: 0
+          example: 15000
+        estado:
+          type: string
+          description: Estado actual de la cuenta
+          enum: [ACTIVA, INACTIVA, BLOQUEADA]
+          example: ACTIVA
+        fechaCreacion:
+          type: string
+          format: date-time
+          description: Fecha y hora de creación de la cuenta
+          example: 2023-10-01T12:00:00Z
+        sucursal:
+          type: string
+          description: Código de la sucursal donde se abrió la cuenta
+          minLength: 3
+          maxLength: 10
+          example: "001"
+    ProblemDetails:
+      type: object
+      description: Detalles del problema según RFC 7807
+      required:
+        - type
+        - title
+        - status
+        - detail
+        - instance
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI que identifica el tipo de problema
+          example: https://api.bancoejemplo.com/errors/invalid-request
+        title:
+          type: string
+          description: Título resumido del problema
+          example: Solicitud inválida
+        status:
+          type: integer
+          description: Código de estado HTTP
+          example: 400
+        detail:
+          type: string
+          description: Descripción detallada del problema
+          example: Los datos proporcionados no cumplen con el esquema requerido.
+        instance:
+          type: string
+          format: uri
+          description: URI de la solicitud que generó el problema
+          example: /cuentas-bancarias
+        invalidParams:
+          type: array
+          description: Lista de parámetros inválidos (opcional)
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Nombre del parámetro inválido
+                example: numeroDocumento
+              reason:
+                type: string
+                description: Razón por la que el parámetro es inválido
+                example: debe ser un número válido de 10 dígitos
+    Pagination:
+      type: object
+      description: Metadata de paginación
+      required:
+        - pageNumber
+        - pageSize
+        - totalElements
+        - totalPages
+      properties:
+        pageNumber:
+          type: integer
+          description: Número de página actual
+          example: 1
+        pageSize:
+          type: integer
+          description: Tamaño de la página
+          example: 20
+        totalElements:
+          type: integer
+          description: Total de elementos en la colección
+          example: 100
+        totalPages:
+          type: integer
+          description: Total de páginas disponibles
+          example: 5
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Clave de idempotencia para operaciones no idempotentes por defecto
+      required: true
+      schema:
+        type: string
+        format: uuid
+        example: 123e4567-e89b-12d3-a456-426614174000
+    CuentaId:
+      name: id
+      in: path
+      description: Identificador único de la cuenta bancaria
+      required: true
+      schema:
+        type: string
+        format: uuid
+        example: 123e4567-e89b-12d3-a456-426614174000
+    PageNumber:
+      name: page
+      in: query
+      description: Número de página (comienza en 1)
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: size
+      in: query
+      description: Tamaño de la página
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: Autenticación mediante OAuth2 con scopes específicos
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.bancoejemplo.com/oauth/token
+          scopes:
+            cuentas:crear: Crear cuentas bancarias
+            cuentas:leer: Leer cuentas bancarias
+            cuentas:actualizar: Actualizar cuentas bancarias
+            cuentas:eliminar: Eliminar cuentas bancarias
